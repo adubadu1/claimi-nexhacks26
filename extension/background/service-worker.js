@@ -1,5 +1,5 @@
 
-// Default API configuration
+// Default API configuration (override in extension popup → Settings → API base URL)
 const CONFIG = {
   apiUrl: 'http://localhost:5171',
   llmEndpoint: '/api/autofill/map-field',
@@ -13,19 +13,30 @@ const STORAGE_KEYS = {
   settings: 'claimly_settings',
 };
 
-// Initialize on install
+async function getApiBaseUrl() {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.settings);
+  const settings = result[STORAGE_KEYS.settings] || {};
+  const custom = typeof settings.apiBaseUrl === 'string' ? settings.apiBaseUrl.trim() : '';
+  if (custom) return custom.replace(/\/$/, '');
+  return CONFIG.apiUrl;
+}
+
+// Initialize on install / update — merge defaults without wiping packets
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[Claimi] Extension installed');
   
-  // Set default storage
-  chrome.storage.local.set({
-    [STORAGE_KEYS.claimPackets]: [],
-    [STORAGE_KEYS.activePacket]: null,
-    [STORAGE_KEYS.settings]: {
-      autoDetect: true,
-      showBadge: true,
-      tier3Enabled: false,
-    },
+  chrome.storage.local.get(null, (all) => {
+    const prevSettings = all[STORAGE_KEYS.settings] || {};
+    chrome.storage.local.set({
+      [STORAGE_KEYS.claimPackets]: all[STORAGE_KEYS.claimPackets] ?? [],
+      [STORAGE_KEYS.activePacket]: all[STORAGE_KEYS.activePacket] ?? null,
+      [STORAGE_KEYS.settings]: {
+        autoDetect: true,
+        showBadge: true,
+        tier3Enabled: false,
+        ...prevSettings,
+      },
+    });
   });
   
   // Create context menu
@@ -176,7 +187,8 @@ async function deletePacket(packetId) {
 // Tier 3: Call LLM API to map a field (legacy)
 async function tier3MapField(fieldInfo, packetKeys) {
   try {
-    const response = await fetch(`${CONFIG.apiUrl}${CONFIG.llmEndpoint}`, {
+    const base = await getApiBaseUrl();
+    const response = await fetch(`${base}${CONFIG.llmEndpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -201,8 +213,8 @@ async function tier3MapField(fieldInfo, packetKeys) {
 async function triageFields(fields, availableUserDataKeys, availableCaseAnswerKeys, caseAnswerMeta) {
   try {
     console.log(`[Claimi] Triaging ${fields.length} fields via LLM`);
-    
-    const response = await fetch(`${CONFIG.apiUrl}${CONFIG.triageEndpoint}`, {
+    const base = await getApiBaseUrl();
+    const response = await fetch(`${base}${CONFIG.triageEndpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

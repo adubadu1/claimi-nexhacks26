@@ -30,7 +30,13 @@ const elements = {
   packetInput: document.getElementById('packet-input'),
   cancelLoadBtn: document.getElementById('cancel-load'),
   confirmLoadBtn: document.getElementById('confirm-load'),
+  settingsLink: document.getElementById('settings-link'),
+  settingsSection: document.getElementById('settings-section'),
+  apiBaseUrlInput: document.getElementById('api-base-url'),
+  saveApiUrlBtn: document.getElementById('save-api-url'),
 };
+
+const SETTINGS_KEY = 'claimly_settings';
 
 // State
 let activePacket = null;
@@ -70,9 +76,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (elements.clearPacketBtn) elements.clearPacketBtn.addEventListener('click', clearPacket);
   if (elements.cancelLoadBtn) elements.cancelLoadBtn.addEventListener('click', hideLoadSection);
   if (elements.confirmLoadBtn) elements.confirmLoadBtn.addEventListener('click', loadCustomPacket);
+
+  if (elements.settingsLink && elements.settingsSection) {
+    elements.settingsLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      const open = elements.settingsSection.style.display === 'none';
+      elements.settingsSection.style.display = open ? 'block' : 'none';
+      if (open) loadApiBaseUrlIntoForm();
+    });
+  }
+  if (elements.saveApiUrlBtn) {
+    elements.saveApiUrlBtn.addEventListener('click', saveApiBaseUrlFromForm);
+  }
   
   console.log('[Claimi Popup] Initialized');
 });
+
+function loadApiBaseUrlIntoForm() {
+  if (!elements.apiBaseUrlInput) return;
+  chrome.storage.local.get(SETTINGS_KEY, (r) => {
+    const s = r[SETTINGS_KEY] || {};
+    elements.apiBaseUrlInput.value = s.apiBaseUrl || '';
+  });
+}
+
+function saveApiBaseUrlFromForm() {
+  if (!elements.apiBaseUrlInput) return;
+  const raw = elements.apiBaseUrlInput.value.trim();
+  chrome.storage.local.get(SETTINGS_KEY, (r) => {
+    const next = { ...(r[SETTINGS_KEY] || {}), apiBaseUrl: raw };
+    chrome.storage.local.set({ [SETTINGS_KEY]: next }, () => {
+      alert(raw ? `API URL saved:\n${raw}` : 'Cleared — using default API URL.');
+    });
+  });
+}
 
 // Update status display
 function updateStatus(icon, title, subtitle, type = '') {

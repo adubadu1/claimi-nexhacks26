@@ -95,6 +95,21 @@
           <button class="btn btn-primary" id="confirm-load">Load Packet</button>
         </div>
       </section>
+
+      <!-- Settings (API URL for hosted backend) -->
+      <section class="section" id="settings-section" style="display: none;">
+        <h2 class="section-title">Settings</h2>
+        <label class="settings-label" for="api-base-url">API base URL</label>
+        <input
+          type="url"
+          class="textarea"
+          id="api-base-url"
+          placeholder="https://your-api.onrender.com"
+          autocomplete="off"
+        />
+        <p class="settings-hint">Leave empty to use the default (localhost for dev). Use your deployed Claimi API origin with no trailing slash.</p>
+        <button class="btn btn-primary btn-full" type="button" id="save-api-url">Save</button>
+      </section>
     </main>
 
     <!-- Footer -->

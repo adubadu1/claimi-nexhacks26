@@ -118,6 +118,7 @@ export default function DashboardPage() {
         .maybeSingle();
 
       if (profileError) {
+        console.error("[Claimi] Supabase profiles:", profileError);
         setError("Unable to load your profile. Please try again.");
         setStatus("error");
         return;
@@ -150,6 +151,10 @@ export default function DashboardPage() {
           .order("created_at", { ascending: false });
 
       if (settlementsLoadError) {
+        console.error(
+          "[Claimi] Supabase parsed_settlements:",
+          settlementsLoadError
+        );
         setSettlementsError(
           settlementsLoadError.message ||
             "Unable to load settlements. Please try again."
