@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { getAuthedUser } from "@/lib/get-authed-user";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,13 +43,6 @@ const selectClassName =
   "h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950";
 
 const toText = (value) => (value == null ? "" : String(value));
-const toNull = (value) => {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed === "" ? null : trimmed;
-  }
-  return value;
-};
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -60,83 +52,61 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { user, error: userError } = await getAuthedUser(supabase);
+      try {
+        const res = await fetch("/api/auth/bootstrap", {
+          credentials: "same-origin",
+        });
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        const json = await res.json();
+        if (!res.ok) {
+          setError(
+            json.error || "Unable to load your profile. Please try again."
+          );
+          setLoading(false);
+          return;
+        }
+        const { user, profile } = json;
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+        if (profile?.onboarded) {
+          router.push("/dashboard");
+          return;
+        }
 
-      if (userError) {
-        console.error("[Claimi] onboarding auth:", userError);
+        setForm((prev) => ({
+          ...prev,
+          legal_first_name: toText(profile?.legal_first_name),
+          legal_last_name: toText(profile?.legal_last_name),
+          email: toText(profile?.email || user.email),
+          phone_number: toText(profile?.phone_number),
+          street_address: toText(profile?.street_address),
+          city: toText(profile?.city),
+          state: toText(profile?.state),
+          zip_code: toText(profile?.zip_code),
+          country: toText(profile?.country),
+          date_of_birth: toText(profile?.date_of_birth),
+          employment_status: toText(profile?.employment_status),
+          employment_type: toText(profile?.employment_type),
+          occupation_category: toText(profile?.occupation_category),
+          preferred_contact_method: toText(profile?.preferred_contact_method),
+          payout_preference: toText(profile?.payout_preference),
+          terms_accepted: Boolean(profile?.terms_accepted),
+          privacy_policy_accepted: Boolean(profile?.privacy_policy_accepted),
+          ethnicity: toText(profile?.ethnicity),
+          gender_identity: toText(profile?.gender_identity),
+          disability_status: toText(profile?.disability_status),
+        }));
+      } catch (e) {
+        console.error("[Claimi] onboarding bootstrap:", e);
         setError("Unable to load your account. Please try again.");
+      } finally {
         setLoading(false);
-        return;
       }
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      const { data, error: profileError } = await supabase
-        .from("profiles")
-        .select(
-          [
-            "legal_first_name",
-            "legal_last_name",
-            "email",
-            "phone_number",
-            "street_address",
-            "city",
-            "state",
-            "zip_code",
-            "country",
-            "date_of_birth",
-            "employment_status",
-            "employment_type",
-            "occupation_category",
-            "preferred_contact_method",
-            "payout_preference",
-            "terms_accepted",
-            "privacy_policy_accepted",
-            "ethnicity",
-            "gender_identity",
-            "disability_status",
-            "onboarded",
-          ].join(",")
-        )
-        .eq("id", user.id)
-        .maybeSingle();
-      if (profileError) {
-        setError("Unable to load your profile. Please try again.");
-        setLoading(false);
-        return;
-      }
-
-      if (data?.onboarded) {
-        router.push("/dashboard");
-        return;
-      }
-
-      setForm((prev) => ({
-        ...prev,
-        legal_first_name: toText(data?.legal_first_name),
-        legal_last_name: toText(data?.legal_last_name),
-        email: toText(data?.email || user.email),
-        phone_number: toText(data?.phone_number),
-        street_address: toText(data?.street_address),
-        city: toText(data?.city),
-        state: toText(data?.state),
-        zip_code: toText(data?.zip_code),
-        country: toText(data?.country),
-        date_of_birth: toText(data?.date_of_birth),
-        employment_status: toText(data?.employment_status),
-        employment_type: toText(data?.employment_type),
-        occupation_category: toText(data?.occupation_category),
-        preferred_contact_method: toText(data?.preferred_contact_method),
-        payout_preference: toText(data?.payout_preference),
-        terms_accepted: Boolean(data?.terms_accepted),
-        privacy_policy_accepted: Boolean(data?.privacy_policy_accepted),
-        ethnicity: toText(data?.ethnicity),
-        gender_identity: toText(data?.gender_identity),
-        disability_status: toText(data?.disability_status),
-      }));
-      setLoading(false);
     };
     load();
   }, [router]);
@@ -164,44 +134,41 @@ export default function OnboardingPage() {
       return;
     }
 
-    const { user, error: userError } = await getAuthedUser(supabase);
-    if (userError) {
-      setError("Unable to load your account. Please try again.");
-      setLoading(false);
-      return;
-    }
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    const { error: upsertError } = await supabase.from("profiles").upsert({
-      id: user.id,
-      legal_first_name: toNull(form.legal_first_name),
-      legal_last_name: toNull(form.legal_last_name),
-      email: toNull(form.email),
-      phone_number: toNull(form.phone_number),
-      street_address: toNull(form.street_address),
-      city: toNull(form.city),
-      state: toNull(form.state),
-      zip_code: toNull(form.zip_code),
-      country: toNull(form.country),
-      date_of_birth: toNull(form.date_of_birth),
-      employment_status: toNull(form.employment_status),
-      employment_type: toNull(form.employment_type),
-      occupation_category: toNull(form.occupation_category),
-      preferred_contact_method: toNull(form.preferred_contact_method),
-      payout_preference: toNull(form.payout_preference),
-      terms_accepted: form.terms_accepted,
-      privacy_policy_accepted: form.privacy_policy_accepted,
-      ethnicity: toNull(form.ethnicity),
-      gender_identity: toNull(form.gender_identity),
-      disability_status: toNull(form.disability_status),
-      onboarded: true,
+    const res = await fetch("/api/auth/profile", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        legal_first_name: form.legal_first_name,
+        legal_last_name: form.legal_last_name,
+        email: form.email,
+        phone_number: form.phone_number,
+        street_address: form.street_address,
+        city: form.city,
+        state: form.state,
+        zip_code: form.zip_code,
+        country: form.country,
+        date_of_birth: form.date_of_birth,
+        employment_status: form.employment_status,
+        employment_type: form.employment_type,
+        occupation_category: form.occupation_category,
+        preferred_contact_method: form.preferred_contact_method,
+        payout_preference: form.payout_preference,
+        terms_accepted: form.terms_accepted,
+        privacy_policy_accepted: form.privacy_policy_accepted,
+        ethnicity: form.ethnicity,
+        gender_identity: form.gender_identity,
+        disability_status: form.disability_status,
+      }),
     });
-
-    if (upsertError) {
-      setError(upsertError.message);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 401) {
+        router.push("/login");
+        setLoading(false);
+        return;
+      }
+      setError(json.error || "Unable to save your profile. Please try again.");
       setLoading(false);
       return;
     }
