@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { readApiJson } from "@/lib/read-api-json";
 import { supabase } from "@/lib/supabase";
 import GoogleLogo from "@/components/GoogleLogo";
 import { Badge } from "@/components/ui/badge";
@@ -62,17 +63,25 @@ function LoginContent() {
       setStatus("idle");
       return;
     }
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id,onboarded")
-      .eq("id", user.id)
-      .maybeSingle();
-    if (profileError) {
-      setError("Unable to load your profile. Please try again.");
+    router.refresh();
+    const res = await fetch("/api/auth/bootstrap", {
+      credentials: "same-origin",
+    });
+    const json = await readApiJson(res);
+    if (res.status === 401) {
+      setError(
+        "Signed in, but the server did not get your session. Refresh the page or clear site data and try again."
+      );
       setStatus("idle");
       return;
     }
-    if (!profileError && (!profile || !profile.onboarded)) {
+    if (!res.ok) {
+      setError(json.error || "Unable to load your profile. Please try again.");
+      setStatus("idle");
+      return;
+    }
+    const { profile } = json;
+    if (!profile || !profile.onboarded) {
       router.push("/onboarding");
       return;
     }

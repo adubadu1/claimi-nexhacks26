@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { readApiJson } from "@/lib/read-api-json";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,11 +57,11 @@ export default function OnboardingPage() {
         const res = await fetch("/api/auth/bootstrap", {
           credentials: "same-origin",
         });
+        const json = await readApiJson(res);
         if (res.status === 401) {
           router.push("/login");
           return;
         }
-        const json = await res.json();
         if (!res.ok) {
           setError(
             json.error || "Unable to load your profile. Please try again."
@@ -161,7 +162,7 @@ export default function OnboardingPage() {
         disability_status: form.disability_status,
       }),
     });
-    const json = await res.json().catch(() => ({}));
+    const json = await readApiJson(res);
     if (!res.ok) {
       if (res.status === 401) {
         router.push("/login");
