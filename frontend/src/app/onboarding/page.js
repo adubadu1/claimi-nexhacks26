@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { getAuthedUser } from "@/lib/get-authed-user";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,20 +51,6 @@ const toNull = (value) => {
   }
   return value;
 };
-
-async function getAuthedUser(client) {
-  let {
-    data: { user },
-    error,
-  } = await client.auth.getUser();
-  if (error || !user) {
-    const { data } = await client.auth.getSession();
-    if (data?.session?.user) {
-      return { user: data.session.user, error: null };
-    }
-  }
-  return { user, error };
-}
 
 export default function OnboardingPage() {
   const router = useRouter();
