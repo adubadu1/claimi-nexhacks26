@@ -48,6 +48,7 @@ const toText = (value) => (value == null ? "" : String(value));
 export default function OnboardingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
 
@@ -123,57 +124,62 @@ export default function OnboardingPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
-    setLoading(true);
     if (!form.date_of_birth) {
       setError("Please enter your date of birth.");
-      setLoading(false);
       return;
     }
     if (!form.terms_accepted || !form.privacy_policy_accepted) {
       setError("Please accept the terms and privacy policy.");
-      setLoading(false);
       return;
     }
 
-    const res = await fetch("/api/auth/profile", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        legal_first_name: form.legal_first_name,
-        legal_last_name: form.legal_last_name,
-        email: form.email,
-        phone_number: form.phone_number,
-        street_address: form.street_address,
-        city: form.city,
-        state: form.state,
-        zip_code: form.zip_code,
-        country: form.country,
-        date_of_birth: form.date_of_birth,
-        employment_status: form.employment_status,
-        employment_type: form.employment_type,
-        occupation_category: form.occupation_category,
-        preferred_contact_method: form.preferred_contact_method,
-        payout_preference: form.payout_preference,
-        terms_accepted: form.terms_accepted,
-        privacy_policy_accepted: form.privacy_policy_accepted,
-        ethnicity: form.ethnicity,
-        gender_identity: form.gender_identity,
-        disability_status: form.disability_status,
-      }),
-    });
-    const json = await readApiJson(res);
-    if (!res.ok) {
-      if (res.status === 401) {
-        router.push("/login");
-        setLoading(false);
+    setSaving(true);
+    try {
+      const res = await fetch("/api/auth/profile", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          legal_first_name: form.legal_first_name,
+          legal_last_name: form.legal_last_name,
+          email: form.email,
+          phone_number: form.phone_number,
+          street_address: form.street_address,
+          city: form.city,
+          state: form.state,
+          zip_code: form.zip_code,
+          country: form.country,
+          date_of_birth: form.date_of_birth,
+          employment_status: form.employment_status,
+          employment_type: form.employment_type,
+          occupation_category: form.occupation_category,
+          preferred_contact_method: form.preferred_contact_method,
+          payout_preference: form.payout_preference,
+          terms_accepted: form.terms_accepted,
+          privacy_policy_accepted: form.privacy_policy_accepted,
+          ethnicity: form.ethnicity,
+          gender_identity: form.gender_identity,
+          disability_status: form.disability_status,
+        }),
+      });
+      const json = await readApiJson(res);
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        setError(
+          json.error || "Unable to save your profile. Please try again."
+        );
         return;
       }
-      setError(json.error || "Unable to save your profile. Please try again.");
-      setLoading(false);
-      return;
+      router.push("/dashboard");
+    } catch (e) {
+      console.error("[Claimi] onboarding save:", e);
+      setError("Network error while saving. Please try again.");
+    } finally {
+      setSaving(false);
     }
-    router.push("/dashboard");
   };
 
   if (loading) {
@@ -485,8 +491,8 @@ export default function OnboardingPage() {
             </div>
 
             {error && <p className="text-sm text-red-300">{error}</p>}
-            <Button className="w-full" type="submit" disabled={loading}>
-              Save and continue
+            <Button className="w-full" type="submit" disabled={loading || saving}>
+              {saving ? "Saving…" : "Save and continue"}
             </Button>
           </form>
         </CardContent>
