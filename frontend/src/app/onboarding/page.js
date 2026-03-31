@@ -51,6 +51,20 @@ const toNull = (value) => {
   return value;
 };
 
+async function getAuthedUser(client) {
+  let {
+    data: { user },
+    error,
+  } = await client.auth.getUser();
+  if (error || !user) {
+    const { data } = await client.auth.getSession();
+    if (data?.session?.user) {
+      return { user: data.session.user, error: null };
+    }
+  }
+  return { user, error };
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -59,11 +73,10 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const load = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const { user, error: userError } = await getAuthedUser(supabase);
+
       if (userError) {
+        console.error("[Claimi] onboarding auth:", userError);
         setError("Unable to load your account. Please try again.");
         setLoading(false);
         return;
@@ -164,10 +177,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { user, error: userError } = await getAuthedUser(supabase);
     if (userError) {
       setError("Unable to load your account. Please try again.");
       setLoading(false);
