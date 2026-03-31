@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+import { getSessionUser } from "@/lib/client-auth";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,11 +83,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const load = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError || !user) {
+      const user = await getSessionUser();
+      if (!user) {
         router.push("/login");
         return;
       }
